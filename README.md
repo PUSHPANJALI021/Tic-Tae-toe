@@ -23,6 +23,7 @@ g++ "Tic.c++" -o Tic
 ```
 
 
+<img width="660" height="457" alt="image" src="https://github.com/user-attachments/assets/1af8d9d3-131f-4fe8-b93b-26a400699a9f" />
 
 
 
