@@ -15,7 +15,7 @@ A simple **console-based Tic-Tac-Toe game** built in **C++** using Object-Orient
 * Object-Oriented Programming (OOP)
 * STL (`vector`, `string`)
 
-## ▶️ Run
+##  Run
 
 ```bash
 g++ "Tic.c++" -o Tic
@@ -28,4 +28,4 @@ g++ "Tic.c++" -o Tic
 
 **Pushpanjali Sinha**
 
-⭐ If you like this project, consider starring the repository!
+
