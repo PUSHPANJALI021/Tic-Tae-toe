@@ -26,6 +26,5 @@ g++ "Tic.c++" -o Tic
 
 ## 👩‍💻 Author
 
-**Pushpanjali Sinha**
 
 
