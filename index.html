@@ -1,0 +1,521 @@
+!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TIC TAC TOE — a console game in C++</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;0,800;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#080b08;
+    --bg-panel:#0d130e;
+    --bg-panel-2:#0a0f0a;
+    --fg:#bfe8c9;
+    --fg-dim:#6f8f78;
+    --green:#39ff6a;
+    --green-dim:#1c7a3c;
+    --red:#ff5c57;
+    --blue:#5ac8ff;
+    --yellow:#f3e08c;
+    --purple:#d18fff;
+    --cyan:#7be0e0;
+    --border:#1b2a1d;
+    --border-bright:#2b4530;
+  }
+ 
+  *{ box-sizing:border-box; }
+  html{ scroll-behavior:smooth; }
+ 
+  @media (prefers-reduced-motion: reduce){
+    html{ scroll-behavior:auto; }
+    *{ animation-duration:0.001ms !important; animation-iteration-count:1 !important; transition-duration:0.001ms !important; }
+  }
+ 
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--fg);
+    font-family:'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    line-height:1.6;
+    position:relative;
+  }
+ 
+  /* scanline overlay */
+  .scanlines{
+    position:fixed; inset:0; pointer-events:none; z-index:50;
+    background:repeating-linear-gradient(
+      to bottom,
+      rgba(0,0,0,0) 0px,
+      rgba(0,0,0,0) 2px,
+      rgba(0,0,0,0.18) 3px
+    );
+    mix-blend-mode:multiply;
+    opacity:0.35;
+  }
+  .scanlines::after{
+    content:"";
+    position:absolute; inset:0;
+    background:radial-gradient(ellipse at center, rgba(0,0,0,0) 55%, rgba(0,0,0,0.55) 100%);
+  }
+ 
+  a{ color:inherit; }
+  ::selection{ background:var(--green-dim); color:#08130a; }
+ 
+  .wrap{ max-width:860px; margin:0 auto; padding:0 24px; }
+ 
+  /* ---------- topbar ---------- */
+  .topbar{
+    padding:18px 24px;
+    border-bottom:1px solid var(--border);
+    font-size:13px;
+    color:var(--fg-dim);
+    display:flex; justify-content:space-between; align-items:center;
+  }
+  .topbar .path{ color:var(--green); }
+  .cursor{
+    display:inline-block; width:8px; background:var(--green);
+    animation:blink 1s steps(1) infinite;
+    margin-left:2px;
+  }
+  @keyframes blink{ 50%{ opacity:0; } }
+ 
+  /* ---------- hero ---------- */
+  .hero{
+    padding:64px 24px 40px;
+    max-width:860px; margin:0 auto;
+  }
+ 
+  .term-window{
+    background:var(--bg-panel);
+    border:1px solid var(--border-bright);
+    border-radius:6px;
+    box-shadow:0 0 0 1px rgba(57,255,106,0.03), 0 20px 60px rgba(0,0,0,0.5), inset 0 0 40px rgba(57,255,106,0.02);
+    overflow:hidden;
+  }
+  .term-titlebar{
+    display:flex; align-items:center; gap:8px;
+    padding:10px 14px;
+    border-bottom:1px solid var(--border);
+    background:var(--bg-panel-2);
+    font-size:12px; color:var(--fg-dim);
+  }
+  .term-titlebar .dot{ width:9px; height:9px; border-radius:50%; background:var(--border-bright); }
+  .term-titlebar .name{ margin-left:6px; }
+  .term-body{
+    padding:20px 22px 26px;
+    font-size:13.5px;
+    white-space:pre-wrap;
+    min-height:300px;
+  }
+  .term-body .ln{ min-height:1.6em; }
+  .tX{ color:var(--red); }
+  .tO{ color:var(--blue); }
+  .tGreen{ color:var(--green); }
+  .tYellow{ color:var(--yellow); }
+  .tPurple{ color:var(--purple); }
+  .tCyan{ color:var(--cyan); }
+  .tDim{ color:var(--fg-dim); }
+ 
+  .banner{
+    margin:44px 0 0;
+    font-size:clamp(22px, 4.4vw, 34px);
+    line-height:1.35;
+    color:var(--green);
+    font-weight:800;
+    letter-spacing:0.04em;
+    white-space:pre;
+    overflow-x:auto;
+    text-shadow:0 0 18px rgba(57,255,106,0.25);
+  }
+ 
+  .tagline{
+    margin:18px 0 0;
+    max-width:56ch;
+    color:var(--fg);
+    font-size:15.5px;
+  }
+  .tagline .hi{ color:var(--yellow); }
+ 
+  .cta-row{
+    margin-top:30px;
+    display:flex; gap:14px; flex-wrap:wrap;
+  }
+  .btn{
+    display:inline-block;
+    padding:11px 18px;
+    border-radius:4px;
+    text-decoration:none;
+    font-weight:700;
+    font-size:14px;
+    letter-spacing:0.02em;
+    border:1px solid var(--border-bright);
+    transition:transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+  }
+  .btn-primary{
+    background:var(--green-dim);
+    color:#eafff0;
+    border-color:var(--green);
+  }
+  .btn-primary:hover{ transform:translateY(-1px); box-shadow:0 6px 22px rgba(57,255,106,0.25); }
+  .btn-ghost{ color:var(--fg); background:transparent; }
+  .btn-ghost:hover{ border-color:var(--green); color:var(--green); transform:translateY(-1px); }
+ 
+  /* ---------- sections ---------- */
+  section{ padding:56px 24px; max-width:860px; margin:0 auto; }
+  section + section{ border-top:1px solid var(--border); }
+ 
+  .prompt-line{
+    color:var(--fg-dim);
+    font-size:13px;
+    margin-bottom:22px;
+  }
+  .prompt-line::before{ content:"$ "; color:var(--green); }
+ 
+  h2.section-title{
+    margin:0 0 6px;
+    font-size:12px;
+    letter-spacing:0.18em;
+    text-transform:uppercase;
+    color:var(--green);
+    font-weight:700;
+  }
+ 
+  /* ---------- features ---------- */
+  .feature-list{
+    list-style:none; margin:0; padding:0;
+    display:grid; gap:14px;
+  }
+  .feature-list li{
+    display:flex; gap:12px;
+    padding:14px 16px;
+    background:var(--bg-panel);
+    border:1px solid var(--border);
+    border-radius:4px;
+    font-size:14px;
+  }
+  .feature-list li .glyph{ color:var(--green); flex:none; }
+  .feature-list li b{ color:var(--fg); }
+  .feature-list li span.desc{ color:var(--fg-dim); }
+ 
+  /* ---------- demo ---------- */
+  .game-wrap{
+    background:var(--bg-panel);
+    border:1px solid var(--border-bright);
+    border-radius:6px;
+    padding:26px 26px 24px;
+  }
+  .players-row{
+    display:flex; justify-content:space-between;
+    font-size:13px;
+    margin-bottom:18px;
+    flex-wrap:wrap;
+    gap:10px;
+  }
+  .player-tag{
+    padding:6px 10px;
+    border:1px solid var(--border);
+    border-radius:4px;
+    color:var(--fg-dim);
+    transition:border-color 0.15s ease, color 0.15s ease;
+  }
+  .player-tag.active-x{ border-color:var(--red); color:var(--red); }
+  .player-tag.active-o{ border-color:var(--blue); color:var(--blue); }
+ 
+  .board{
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:2px;
+    background:var(--border);
+    border:2px solid var(--border-bright);
+    max-width:320px;
+    margin:0 auto;
+  }
+  .cell{
+    aspect-ratio:1/1;
+    background:var(--bg-panel-2);
+    border:none;
+    color:var(--fg-dim);
+    font-family:inherit;
+    font-size:34px;
+    font-weight:800;
+    cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    transition:background 0.15s ease;
+  }
+  .cell:hover:not(:disabled){ background:#111a13; }
+  .cell:disabled{ cursor:default; }
+  .cell.x{ color:var(--red); }
+  .cell.o{ color:var(--blue); }
+  .cell.win{ background:rgba(57,255,106,0.14); color:var(--green); }
+ 
+  .status{
+    margin-top:20px;
+    text-align:center;
+    font-size:14px;
+    min-height:1.6em;
+  }
+  .status.win-text{ color:var(--green); font-weight:700; }
+  .status.draw-text{ color:var(--purple); font-weight:700; }
+ 
+  .demo-actions{ text-align:center; margin-top:18px; }
+ 
+  /* ---------- build ---------- */
+  .code-block{
+    background:var(--bg-panel);
+    border:1px solid var(--border-bright);
+    border-radius:6px;
+    padding:18px 20px;
+    font-size:13.5px;
+    color:var(--fg);
+    overflow-x:auto;
+    margin:0 0 18px;
+  }
+  .code-block .c1{ color:var(--fg-dim); }
+  .code-block .c2{ color:var(--green); }
+  .note{
+    color:var(--fg-dim);
+    font-size:13.5px;
+    max-width:64ch;
+  }
+  .note code{ color:var(--cyan); }
+ 
+  /* ---------- footer ---------- */
+  footer{
+    padding:50px 24px 60px;
+    max-width:860px; margin:0 auto;
+    text-align:center;
+  }
+  .thanks{
+    color:var(--cyan);
+    font-size:15px;
+    white-space:pre;
+    display:inline-block;
+    margin-bottom:14px;
+  }
+  .credit{ color:var(--fg-dim); font-size:12.5px; }
+</style>
+</head>
+<body>
+ 
+  <div class="scanlines"></div>
+ 
+  <div class="topbar">
+    <span><span class="path">guest@arcade</span><span class="tDim">:~$</span> ./tictactoe<span class="cursor"></span></span>
+    <span>two players · one keyboard</span>
+  </div>
+ 
+  <div class="hero">
+    <div class="term-window">
+      <div class="term-titlebar">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="name">tictactoe.cpp — running</span>
+      </div>
+      <div class="term-body" id="heroTerm"></div>
+    </div>
+ 
+    <h1 class="banner">┌─────────────────────────┐
+│   T I C   T A C   T O E │
+└─────────────────────────┘</h1>
+ 
+    <p class="tagline">A two-player game that never leaves the terminal. Names get typed in, moves get pressed in <span class="hi">one keystroke</span>, and every X, O, and win line gets its own ANSI color.</p>
+ 
+    <div class="cta-row">
+      <a href="#demo" class="btn btn-primary">[ Play Now ]</a>
+      <a href="#build" class="btn btn-ghost">[ View Build Steps ]</a>
+    </div>
+  </div>
+ 
+  <section id="features">
+    <h2 class="section-title">Features</h2>
+    <div class="prompt-line">./tictactoe --features</div>
+    <ul class="feature-list">
+      <li><span class="glyph">›</span><span><b>Hot-seat two-player</b> — <span class="desc">both names are typed in at the start, then the board decides whose turn it is.</span></span></li>
+      <li><span class="glyph">›</span><span><b>One keypress, no Enter</b> — <span class="desc">moves register the instant a key is hit, via <code>termios</code> on Linux/macOS and <code>conio.h</code> on Windows.</span></span></li>
+      <li><span class="glyph">›</span><span><b>Full ANSI color board</b> — <span class="desc">Player X renders in red, Player O in blue, straight from the terminal's own color codes.</span></span></li>
+      <li><span class="glyph">›</span><span><b>Every win line detected</b> — <span class="desc">rows, columns, and both diagonals are all checked after each move.</span></span></li>
+      <li><span class="glyph">›</span><span><b>Winning line highlighted</b> — <span class="desc">the three winning squares redraw in green so the win is easy to spot.</span></span></li>
+      <li><span class="glyph">›</span><span><b>Draw detection</b> — <span class="desc">nine moves with no winner prints a clean "Game Draw" screen.</span></span></li>
+      <li><span class="glyph">›</span><span><b>Replay loop</b> — <span class="desc">win or draw, you're offered a rematch without restarting the program.</span></span></li>
+    </ul>
+  </section>
+ 
+  <section id="demo">
+    <h2 class="section-title">Play It Here</h2>
+    <div class="prompt-line">./tictactoe --play</div>
+ 
+    <div class="game-wrap">
+      <div class="players-row">
+        <span class="player-tag" id="tagX">PLAYER 1 · X</span>
+        <span class="player-tag" id="tagO">PLAYER 2 · O</span>
+      </div>
+      <div class="board" id="board"></div>
+      <div class="status" id="status">Player 1's move — pick a square.</div>
+      <div class="demo-actions">
+        <button class="btn btn-ghost" id="resetBtn">[ Restart ]</button>
+      </div>
+    </div>
+  </section>
+ 
+  <section id="build">
+    <h2 class="section-title">Build It Yourself</h2>
+    <div class="prompt-line">./build.sh</div>
+    <pre class="code-block"><span class="c1"># compile</span>
+<span class="c2">g++</span> -std=c++17 tictactoe.cpp -o tictactoe
+ 
+<span class="c1"># run</span>
+<span class="c2">./tictactoe</span></pre>
+    <p class="note">On Windows the build pulls in <code>&lt;conio.h&gt;</code> for instant key reads; on Linux and macOS it falls back to a small <code>termios</code>-based <code>getch()</code>, so a single keypress moves the game forward the same way on every platform.</p>
+  </section>
+ 
+  <footer>
+    <div class="thanks">┌───────────────┐
+│   Thank you   │
+└───────────────┘</div>
+    <div class="credit">Two players. One board. Nine squares.</div>
+  </footer>
+ 
+<script>
+  // ---------- hero typewriter ----------
+  const heroLines = [
+    { t: "Enter 1st player name : ", c: "tX" },
+    { t: "Rin", c: "" , inline:true},
+    { t: "Enter 2nd player name : ", c: "tO" },
+    { t: "Kade", c: "", inline:true },
+    { t: "", c: "" },
+    { t: " _________________ ", c: "tDim" },
+    { t: "|     |     |     |", c: "tDim" },
+    { t: "|  X  |  2  |  3  |", c: "tX" },
+    { t: "|_____|_____|_____|", c: "tDim" },
+    { t: "|     |     |     |", c: "tDim" },
+    { t: "|  4  |  O  |  6  |", c: "tO" },
+    { t: "|_____|_____|_____|", c: "tDim" },
+    { t: "|     |     |     |", c: "tDim" },
+    { t: "|  X  |  8  |  9  |", c: "tX" },
+    { t: "|_____|_____|_____|", c: "tDim" },
+    { t: "", c: "" },
+    { t: "|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|", c: "tGreen" },
+    { t: "| Congratulation, Rin Win the Game", c: "tGreen" },
+    { t: "|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|", c: "tGreen" },
+  ];
+ 
+  const heroTerm = document.getElementById('heroTerm');
+  let li = 0;
+ 
+  function typeLine(){
+    if(li >= heroLines.length){
+      const cur = document.createElement('span');
+      cur.className = 'cursor';
+      cur.style.height = '1em';
+      heroTerm.appendChild(cur);
+      return;
+    }
+    const item = heroLines[li];
+    const row = document.createElement('div');
+    row.className = 'ln';
+    if(item.c) row.classList.add(item.c);
+    if(item.inline && heroTerm.lastChild){
+      heroTerm.lastChild.textContent += item.t;
+      li++;
+      requestAnimationFrame(typeLine);
+      return;
+    }
+    heroTerm.appendChild(row);
+    let ci = 0;
+    const speed = item.t.length > 0 ? 10 : 0;
+    function typeChar(){
+      if(ci < item.t.length){
+        row.textContent += item.t[ci];
+        ci++;
+        setTimeout(typeChar, speed);
+      } else {
+        li++;
+        setTimeout(typeLine, item.t.length ? 40 : 10);
+      }
+    }
+    typeChar();
+  }
+  typeLine();
+ 
+  // ---------- playable board ----------
+  const boardEl = document.getElementById('board');
+  const statusEl = document.getElementById('status');
+  const resetBtn = document.getElementById('resetBtn');
+  const tagX = document.getElementById('tagX');
+  const tagO = document.getElementById('tagO');
+ 
+  const LINES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  let cells = Array(9).fill(null);
+  let turn = 'X';
+  let over = false;
+  let cellEls = [];
+ 
+  function buildBoard(){
+    boardEl.innerHTML = '';
+    cellEls = [];
+    for(let i=0;i<9;i++){
+      const b = document.createElement('button');
+      b.className = 'cell';
+      b.setAttribute('aria-label', 'Square ' + (i+1));
+      b.addEventListener('click', () => play(i));
+      boardEl.appendChild(b);
+      cellEls.push(b);
+    }
+  }
+ 
+  function updateTags(){
+    tagX.className = 'player-tag' + (turn === 'X' && !over ? ' active-x' : '');
+    tagO.className = 'player-tag' + (turn === 'O' && !over ? ' active-o' : '');
+  }
+ 
+  function play(i){
+    if(over || cells[i]) return;
+    cells[i] = turn;
+    const cellEl = cellEls[i];
+    cellEl.textContent = turn;
+    cellEl.classList.add(turn === 'X' ? 'x' : 'o');
+    cellEl.disabled = true;
+ 
+    const win = LINES.find(l => l.every(idx => cells[idx] === turn));
+    if(win){
+      over = true;
+      win.forEach(idx => cellEls[idx].classList.add('win'));
+      const name = turn === 'X' ? 'Player 1' : 'Player 2';
+      statusEl.textContent = 'Congratulation, ' + name + ' win the game!';
+      statusEl.className = 'status win-text';
+      updateTags();
+      return;
+    }
+ 
+    if(cells.every(c => c)){
+      over = true;
+      statusEl.textContent = 'Game Draw';
+      statusEl.className = 'status draw-text';
+      updateTags();
+      return;
+    }
+ 
+    turn = turn === 'X' ? 'O' : 'X';
+    const who = turn === 'X' ? "Player 1's" : "Player 2's";
+    statusEl.textContent = who + " move — pick a square.";
+    statusEl.className = 'status';
+    updateTags();
+  }
+ 
+  function resetGame(){
+    cells = Array(9).fill(null);
+    turn = 'X';
+    over = false;
+    buildBoard();
+    statusEl.textContent = "Player 1's move — pick a square.";
+    statusEl.className = 'status';
+    updateTags();
+  }
+ 
+  resetBtn.addEventListener('click', resetGame);
+  resetGame();
+</script>
+ 
+</body>
+</html>
+ 
