@@ -22,9 +22,8 @@ g++ "Tic.c++" -o Tic
 ./Tic
 ```
 
-> **Windows:** Replace `system("clear")` with `system("cls")` before running.
 
-## 👩‍💻 Author
+
 
 
 
