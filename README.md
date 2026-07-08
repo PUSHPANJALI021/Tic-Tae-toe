@@ -9,7 +9,7 @@ A simple **console-based Tic-Tac-Toe game** built in **C++** using Object-Orient
 * Colored console interface
 * Replay option
 
-## 🛠️ Technologies
+##  Technologies
 
 * C++
 * Object-Oriented Programming (OOP)
